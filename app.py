@@ -1,17 +1,13 @@
 import os
 import cv2
 import numpy as np
-from flask import Flask, render_template, request, jsonify, send_file
-from werkzeug.utils import secure_filename
+from flask import Flask, render_template, request, jsonify
 import base64
 import io
 from model import ImageProcessor
 
 app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = "uploads"
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max
-
-os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
 processor = ImageProcessor()
 
@@ -21,6 +17,13 @@ def img_to_base64(img):
     _, buffer = cv2.imencode(".png", img)
     b64 = base64.b64encode(buffer).decode("utf-8")
     return f"data:image/png;base64,{b64}"
+
+
+def read_image_from_bytes(file_bytes):
+    """Read image from bytes directly into numpy array (no disk save)."""
+    np_arr = np.frombuffer(file_bytes, np.uint8)
+    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    return img
 
 
 @app.route("/")
@@ -36,11 +39,10 @@ def upload():
     if file.filename == "":
         return jsonify({"error": "No file selected"}), 400
 
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-    file.save(filepath)
+    # Read directly from memory — no disk save
+    file_bytes = file.read()
+    img = read_image_from_bytes(file_bytes)
 
-    img = cv2.imread(filepath)
     if img is None:
         return jsonify({"error": "Cannot read image"}), 400
 
@@ -129,4 +131,4 @@ def process():
 
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=True)
