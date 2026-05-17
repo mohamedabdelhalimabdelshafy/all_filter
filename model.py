@@ -305,6 +305,10 @@ class ImageProcessor:
         self.current_image = cv2.cvtColor(sobel, cv2.COLOR_GRAY2BGR)
         return self.current_image
 
+    def _struct_element(self, value):
+         k = self._kernel_size(value)
+         return cv2.getStructuringElement(cv2.MORPH_RECT, (k, k))
+
     def dilation(self, value=50):
         self._push_undo()
         se = self._struct_element(value)
